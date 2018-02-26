@@ -101,8 +101,8 @@ def main():
 
     for title, url in zip(titles, urls):
         if title in pre_titles:
-            print('ほぞんちゅう：', title)
             continue
+        print('ほぞんちゅう：', title)
         update(table_name, url, today)
     conn.close()
     return 0
