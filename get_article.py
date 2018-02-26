@@ -10,7 +10,10 @@ c = conn.cursor()
 table_name = 'top'
 
 
-def get_urls(category_url):
+def get_urls(category_url, today):
+    '''
+    gigazinのトップの記事から今日の日付で投稿された記事のtitleとurlを取得
+    '''
     res = req.urlopen(category_url)
     try:
         soup = BeautifulSoup(res, 'lxml')
@@ -21,10 +24,20 @@ def get_urls(category_url):
     atags = [card.h2.a.unwrap() for card in cards]
     urls = [re.sub('<a href="', '', re.sub('\"></a>', '', str(atag)))
             for atag in atags]
-    return titles, urls
+    dtags = [card.time.unwrap() for card in cards]
+    days = [re.sub('<.*\"', '', re.sub('T.*>', '', str(dtag)))
+            for dtag in dtags]
+    for idx, day in enumerate(days):
+        if not day == today:
+            break
+    return titles[:idx], urls[:idx]
 
 
 def get_html(url, tag='p', class_='preface'):
+    '''
+    渡されたurlから指定のタグの中身を抜き出す
+    正規表現でパースしてるところは単にタグを外してるだけ
+    '''
     res = req.urlopen(url)
     try:
         soup = BeautifulSoup(res, 'lxml')
@@ -38,41 +51,57 @@ def get_html(url, tag='p', class_='preface'):
 
 
 def create_table(table_name):
-    sql = 'create table if not exists {} (title varchar(64),article varchar,date int)'.format(
+    '''
+    渡されたテーブル名が存在しなければ作成
+    '''
+    sql = 'create table if not exists {} (title varchar(64),article varchar,date int,url varchar(1024))'.format(
         table_name)
     c.execute(sql)
 
 
 def insert_data(table_name, data):
-    sql = 'insert into {} (title,article,date) values (?,?,?)'.format(
+    '''
+    タイトル，記事，日付，urlを挿入
+    '''
+    sql = 'insert into {} (title,article,date,url) values (?,?,?,?)'.format(
         table_name)
     c.executemany(sql, (data,))
     conn.commit()
 
 
 def drop_table(table_name):
+    '''
+    tableを削除
+    '''
     sql = 'drop table if exists {}'.format(table_name)
     c.execute(sql)
 
 
 def update(table_name, url, today):
+    '''
+    get_htmlで得たデータに日付をプラスしてデータベースに追加
+    '''
     title, article = get_html(url)
-    data = (title, article, int(today))
+    data = (title, article, int(today), url)
     insert_data(table_name, data)
 
 
 def main():
-    # drop_table(table_name)
+    '''
+    gigazinのトップから全ての記事にたいして記事を取得し保存
+    '''
     create_table(table_name)
     top = 'https://gigazine.net/'
-    titles, urls = get_urls(top)
-    sql = 'select title from {} '.format(table_name)
-    pre_titles = [title[0] for title in c.execute(sql)]
     today = datetime.date.today()
+    titles, urls = get_urls(top, str(today))
     today = re.sub('-', '', str(today))
+
+    sql = 'select title from {} where date = ?'.format(table_name)
+    pre_titles = [title[0] for title in c.execute(sql, (today,))]
+
     for title, url in zip(titles, urls):
         if title in pre_titles:
-            print(title)
+            print('ほぞんちゅう：', title)
             continue
         update(table_name, url, today)
     conn.close()
@@ -80,4 +109,5 @@ def main():
 
 
 if __name__ == '__main__':
+    # drop_table(table_name)
     main()
