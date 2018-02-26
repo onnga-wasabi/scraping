@@ -64,8 +64,8 @@ def update(table_name, url, today):
 def main():
     # drop_table(table_name)
     create_table(table_name)
-    security = 'https://gigazine.net/'
-    titles, urls = get_urls(security)
+    top = 'https://gigazine.net/'
+    titles, urls = get_urls(top)
     sql = 'select title from {} '.format(table_name)
     pre_titles = [title[0] for title in c.execute(sql)]
     today = datetime.date.today()
