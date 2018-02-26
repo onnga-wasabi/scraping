@@ -7,7 +7,7 @@ import datetime
 dbname = 'gigazin.db'
 conn = sqlite3.connect(dbname)
 c = conn.cursor()
-table_name = 'security'
+table_name = 'top'
 
 
 def get_urls(category_url):
@@ -64,7 +64,7 @@ def update(table_name, url, today):
 def main():
     # drop_table(table_name)
     create_table(table_name)
-    security = 'https://gigazine.net/news/C14/'
+    security = 'https://gigazine.net/'
     titles, urls = get_urls(security)
     sql = 'select title from {} '.format(table_name)
     pre_titles = [title[0] for title in c.execute(sql)]
